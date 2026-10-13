@@ -1,0 +1,28 @@
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# AWS / Terraform
+.aws/
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Local outputs
+response.json
+*.log
+
+# Environment and secrets
+.env
+.env.*
+*.pem
+*.key
+
+# macOS
+.DS_Store

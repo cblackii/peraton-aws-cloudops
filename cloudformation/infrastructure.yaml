@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  Peraton AWS CloudOps Lab -
+  CloudWatch Logging, IAM, Lambda, and Operational Monitoring
+
+Resources:
+
+  # ---------------------------------------------------
+  # 1. CloudWatch Log Group
+  # ---------------------------------------------------
+
+  ApplicationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/cloudops/peraton-lab
+      RetentionInDays: 7
+      Tags:
+        - Key: Project
+          Value: Peraton-CloudOps
+        - Key: Environment
+          Value: Development
+
+  # ---------------------------------------------------
+  # 2. IAM Execution Role
+  # ---------------------------------------------------
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+
+      Policies:
+        - PolicyName: CloudWatchLogsWrite
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/cloudops/peraton-lab:log-stream:*'
+
+  # ---------------------------------------------------
+  # 3. AWS Lambda Function
+  # ---------------------------------------------------
+
+  CloudOpsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: peraton-cloudops-dev
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 10
+      MemorySize: 128
+
+      LoggingConfig:
+        LogGroup: !Ref ApplicationLogGroup
+
+      Code:
+        ZipFile: |
+          import json
+          import logging
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+              logger.info("Peraton CloudOps application invoked")
+
+              response = {
+                  "status": "healthy",
+                  "message": "Peraton AWS CloudOps Lambda operational"
+              }
+
+              return {
+                  "statusCode": 200,
+                  "body": json.dumps(response)
+              }
+
+  # ---------------------------------------------------
+  # 4. CloudWatch Lambda Error Alarm
+  # ---------------------------------------------------
+
+  LambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: peraton-cloudops-lambda-errors
+      AlarmDescription: >
+        Detects Lambda execution errors for the
+        Peraton AWS CloudOps development environment.
+
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref CloudOpsFunction
