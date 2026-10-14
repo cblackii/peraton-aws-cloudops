@@ -26,3 +26,8 @@ response.json
 
 # macOS
 .DS_Store
+
+.venv/
+
+# CloudFormation backup files
+*.backup
